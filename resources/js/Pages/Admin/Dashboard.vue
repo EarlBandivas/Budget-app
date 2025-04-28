@@ -2,6 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, reactive } from 'vue';
+import * as XLSX from 'xlsx';
+import { formatCurrency, formatDate } from '@/utils/excel';
 
 const props = defineProps({
   submittedReports: {
@@ -83,6 +85,65 @@ const showDetailsModal = ref(false);
 const viewReport = (report) => {
   selectedReport.value = report;
   showDetailsModal.value = true;
+};
+
+const downloadExcel = (report) => {
+  // Prepare the data for the expense report
+  const reportData = [
+    ['Expense Report'],
+    [''],
+    ['User Information'],
+    ['Email:', report.user_email],
+    ['Department:', report.user_department],
+    ['Submission Date:', formatDate(report.submission_date)],
+    ['Status:', report.status],
+    [''],
+    ['Expenses'],
+    ['Category', 'Expense Type', 'Amount', 'Date'],
+    ...report.expenses.map((expense) => [
+      expense.category,
+      expense.expense_type,
+      formatCurrency(expense.amount),
+      formatDate(expense.created_at),
+    ]),
+    [''],
+    [
+      'Total:',
+      '',
+      formatCurrency(report.expenses.reduce((sum, exp) => sum + exp.amount, 0)),
+      '',
+    ],
+  ];
+
+  // Create a new workbook and worksheet
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(reportData);
+
+  // Add some styling
+  const mergeConfig = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Merge first row
+  ];
+
+  if (!ws['!merges']) ws['!merges'] = [];
+  ws['!merges'] = mergeConfig;
+
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 20 }, // Category
+    { wch: 20 }, // Expense Type
+    { wch: 15 }, // Amount
+    { wch: 15 }, // Date
+  ];
+
+  // Add the worksheet to the workbook
+  XLSX.utils.book_append_sheet(wb, ws, 'Expense Report');
+
+  // Generate filename with sanitized email
+  const sanitizedEmail = report.user_email.replace(/[^a-zA-Z0-9]/g, '_');
+  const fileName = `expense_report_${sanitizedEmail}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+  // Save the file
+  XLSX.writeFile(wb, fileName);
 };
 </script>
 
@@ -254,6 +315,13 @@ const viewReport = (report) => {
         </div>
       </div>
       <div class="modal-action">
+        <button
+          v-if="selectedReport.status === 'Approved'"
+          @click="downloadExcel(selectedReport)"
+          class="btn btn-success"
+        >
+          Download Excel
+        </button>
         <button @click="showDetailsModal = false" class="btn">Close</button>
       </div>
     </div>
