@@ -52,12 +52,13 @@ class ExpenseReportController extends Controller
         // If rejected, unlink all expenses
         if ($request->status === 'Rejected') {
             $report->expenses()->update(['expense_report_id' => null]);
+            $report->delete(); // Actually delete the rejected report
         }
 
         // Send notification to the user
         $report->user->notify(new ExpenseReportStatusChanged($request->status, $report->id));
 
-        return redirect()->back()->with('message', 'Report status updated successfully');
+        return back()->with('message', 'Report status updated successfully');
     }
 
     public function adminDashboard()
@@ -97,11 +98,53 @@ class ExpenseReportController extends Controller
             'submittedReports' => $submittedReports
         ]);
     }
+
+    public function analytics()
+    {
+        // Get reports by department
+        $reportsByDepartment = ExpenseReport::with('user')
+            ->get()
+            ->groupBy(function($report) {
+                return $report->user->department ?? 'Unassigned';
+            })
+            ->map(function($reports) {
+                return $reports->count();
+            });
+        
+        // Get reports by status
+        $reportsByStatus = ExpenseReport::get()
+            ->groupBy('status')
+            ->map(function($reports) {
+                return $reports->count();
+            });
+        
+        // Get monthly expense totals
+        $monthlyExpenses = ExpenseReport::with('expenses')
+            ->get()
+            ->groupBy(function($report) {
+                return $report->submission_date->format('Y-m');
+            })
+            ->map(function($reports) {
+                return $reports->flatMap->expenses->sum('amount');
+            });
+        
+        // Get top expense categories
+        $topCategories = Expense::whereNotNull('expense_report_id')
+            ->get()
+            ->groupBy('category')
+            ->map(function($expenses) {
+                return $expenses->sum('amount');
+            })
+            ->sortDesc()
+            ->take(5);
+        
+        return Inertia::render('Admin/Analytics', [
+            'reportsByDepartment' => $reportsByDepartment,
+            'reportsByStatus' => $reportsByStatus,
+            'monthlyExpenses' => $monthlyExpenses,
+            'topCategories' => $topCategories
+        ]);
+    }
 }
-
-
-
-
-
 
 

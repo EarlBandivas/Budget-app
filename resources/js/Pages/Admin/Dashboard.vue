@@ -48,10 +48,7 @@ const rejectReport = () => {
     },
     {
       preserveScroll: true,
-      onSuccess: () => {
-        showAlert('success', 'Report rejected successfully');
-        showRejectModal.value = false;
-
+      onSuccess: (page) => {
         // Find and remove the rejected report from our reactive array
         const index = reports.findIndex(
           (r) => r.id === reportToReject.value.id,
@@ -60,9 +57,11 @@ const rejectReport = () => {
           reports.splice(index, 1);
         }
 
+        showAlert('success', 'Report rejected successfully');
+        showRejectModal.value = false;
         reportToReject.value = null;
       },
-      onError: () => {
+      onError: (errors) => {
         showAlert('error', 'Failed to reject report');
         showRejectModal.value = false;
       },
@@ -224,6 +223,8 @@ const downloadExcel = (report) => {
                         @click="confirmReject(report)"
                         class="btn btn-error btn-sm m-2"
                         :disabled="report.status === 'Rejected'"
+                        s
+                        title="Reject and delete this report"
                       >
                         Reject
                       </button>

@@ -27,6 +27,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->name('admin.dashboard');
     Route::put('/expense-reports/{report}/status', [ExpenseReportController::class, 'updateStatus'])
         ->name('expense-reports.update-status');
+    Route::get('/admin/analytics', [ExpenseReportController::class, 'analytics'])
+        ->name('admin.analytics');
 });
 
 // Regular user routes
@@ -76,6 +78,7 @@ Route::middleware('guest')->group(function () {
     Route::get('auth/google/callback', [GoogleLoginController::class, 'handleGoogleCallback'])
         ->name('auth.google.callback');
 });
+
 
 
 
